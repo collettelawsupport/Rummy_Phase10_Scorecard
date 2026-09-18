@@ -681,6 +681,33 @@ p {
   font-size: 1.16rem;
 }
 
+.record-sync-status {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 7px 0 0;
+  color: #aec1d2;
+  font-size: 0.75rem;
+  font-weight: 750;
+}
+
+.record-sync-status > span:first-child {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: var(--orange);
+}
+
+.record-sync-status--synced > span:first-child {
+  background: #63e3d2;
+}
+
+.record-sync-status--error > span:first-child,
+.record-sync-status--offline > span:first-child {
+  background: #ff8d8d;
+}
+
 .record-score {
   display: flex;
   align-items: baseline;

@@ -2,3 +2,5 @@
 .sites-runtime/
 work/
 outputs/
+node_modules/
+.netlify/

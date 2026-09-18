@@ -1,6 +1,6 @@
 # Family Scorecard
 
-A device-local scorekeeper for Rummy and Phase 10. It supports two to six players, saved games, automatic dealer rotation, per-round winners, Rummy tiebreaks, Phase 10 phase tracking, round undo, and a persistent Bo vs. Daylene Rummy record with wins and cumulative points.
+A family scorekeeper for Rummy and Phase 10. It supports two to six players, saved games, automatic dealer rotation, per-round winners, Rummy tiebreaks, Phase 10 phase tracking, round undo, and a shared Bo vs. Daylene Rummy record with wins and cumulative points.
 
 ## Run locally
 
@@ -14,8 +14,8 @@ Then open `http://localhost:4173`.
 
 ## Deploy to Netlify
 
-Connect the repository in Netlify. The included `netlify.toml` publishes the `dist` directory and does not require a build command.
+Connect the repository in Netlify. The included `netlify.toml` publishes the `dist` directory and deploys the shared-record function. Netlify installs the small Blob-storage dependency automatically.
 
 ## Data storage
 
-Games and the Bo vs. Daylene record are stored in browser local storage. They survive browser and computer restarts on the same browser and device. Clearing site data, using another browser, or switching devices will not carry the record over.
+Individual game scorecards stay in browser local storage and survive restarts on that device. The Bo vs. Daylene wins and cumulative points are stored as one app-wide record in Netlify Blobs, so every device opening the deployed link sees the same record. Because the shared app is intentionally link-accessible, anyone with the link can update that record.

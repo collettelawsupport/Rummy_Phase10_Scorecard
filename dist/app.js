@@ -3,6 +3,8 @@
 
   const STORAGE_KEY = "family-scorecard-v1";
   const RECORD_RESET_KEY = "bo-daylene-record-reset-2026-09-17";
+  const SHARED_RECORD_URL = "/.netlify/functions/family-record";
+  const IS_LOCAL_PREVIEW = location.hostname === "127.0.0.1" || location.hostname === "localhost";
   const TYPES = {
     rummy: { label: "Rummy", shortRule: "First to 500" },
     phase10: { label: "Phase 10", shortRule: "Complete all 10 phases" },
@@ -19,8 +21,11 @@
 
   let setupType = "rummy";
   let toastTimer;
+  let sharedRecordTimer;
+  let cloudStatus = IS_LOCAL_PREVIEW ? "preview" : "connecting";
   let recordWasCleared = false;
   let state = loadState();
+  let localRecordSignature = JSON.stringify(state.record);
 
   function emptyState() {
     return {
@@ -28,7 +33,7 @@
       games: [],
       activeTab: "rummy",
       activeGameIdByType: { rummy: null, phase10: null },
-      record: { boWins: 0, dayleneWins: 0, boPoints: 0, daylenePoints: 0, results: [] },
+      record: { boWins: 0, dayleneWins: 0, boPoints: 0, daylenePoints: 0, results: [], updatedAt: 0 },
       maintenanceFlags: [],
     };
   }
@@ -46,7 +51,7 @@
         record: { ...emptyState().record, ...parsed.record },
       };
       if (!loaded.maintenanceFlags?.includes(RECORD_RESET_KEY)) {
-        loaded.record = { boWins: 0, dayleneWins: 0, boPoints: 0, daylenePoints: 0, results: [] };
+        loaded.record = { boWins: 0, dayleneWins: 0, boPoints: 0, daylenePoints: 0, results: [], updatedAt: 0 };
         loaded.maintenanceFlags = [...(loaded.maintenanceFlags || []), RECORD_RESET_KEY];
         localStorage.setItem(STORAGE_KEY, JSON.stringify(loaded));
         recordWasCleared = true;
@@ -57,9 +62,13 @@
     }
   }
 
-  function saveState() {
+  function saveState(options = {}) {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      const nextSignature = JSON.stringify(state.record);
+      const recordChanged = nextSignature !== localRecordSignature;
+      localRecordSignature = nextSignature;
+      if (recordChanged && options.syncRecord !== false) queueSharedRecordSave();
     } catch (error) {
       showToast("This browser could not save the latest change.");
     }
@@ -99,6 +108,91 @@
     toast.classList.add("toast--show");
     window.clearTimeout(toastTimer);
     toastTimer = window.setTimeout(() => toast.classList.remove("toast--show"), 2200);
+  }
+
+  function cloudStatusLabel() {
+    if (cloudStatus === "synced") return "Shared across devices";
+    if (cloudStatus === "syncing") return "Saving shared record…";
+    if (cloudStatus === "offline") return "Offline · saved on this device";
+    if (cloudStatus === "error") return "Shared record unavailable";
+    if (cloudStatus === "preview") return "Cloud sharing activates on Netlify";
+    return "Loading shared record…";
+  }
+
+  function setCloudStatus(status) {
+    cloudStatus = status;
+    const statusNode = document.querySelector("[data-cloud-status]");
+    if (!statusNode) return;
+    statusNode.className = `record-sync-status record-sync-status--${status}`;
+    statusNode.querySelector("span:last-child").textContent = cloudStatusLabel();
+  }
+
+  function normalizeSharedRecord(record) {
+    return {
+      boWins: Number.isSafeInteger(record?.boWins) ? record.boWins : 0,
+      dayleneWins: Number.isSafeInteger(record?.dayleneWins) ? record.dayleneWins : 0,
+      boPoints: Number.isSafeInteger(record?.boPoints) ? record.boPoints : 0,
+      daylenePoints: Number.isSafeInteger(record?.daylenePoints) ? record.daylenePoints : 0,
+      results: Array.isArray(record?.results) ? record.results : [],
+      updatedAt: Number.isSafeInteger(record?.updatedAt) ? record.updatedAt : 0,
+    };
+  }
+
+  async function requestSharedRecord(method, record) {
+    const response = await fetch(SHARED_RECORD_URL, {
+      method,
+      headers: method === "PUT" ? { "Content-Type": "application/json" } : undefined,
+      body: method === "PUT" ? JSON.stringify({ record }) : undefined,
+    });
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(body.error || "Shared record request failed.");
+    return body;
+  }
+
+  async function loadSharedRecord() {
+    if (IS_LOCAL_PREVIEW) {
+      setCloudStatus("preview");
+      return;
+    }
+    setCloudStatus("connecting");
+    try {
+      const body = await requestSharedRecord("GET");
+      const cloudRecord = normalizeSharedRecord(body.record);
+      const localRecord = normalizeSharedRecord(state.record);
+      if (!body.exists || localRecord.updatedAt > cloudRecord.updatedAt) {
+        await saveSharedRecord(localRecord);
+        return;
+      }
+      state.record = cloudRecord;
+      saveState({ syncRecord: false });
+      render();
+      setCloudStatus("synced");
+    } catch (error) {
+      setCloudStatus(navigator.onLine ? "error" : "offline");
+    }
+  }
+
+  function queueSharedRecordSave() {
+    if (IS_LOCAL_PREVIEW) return;
+    window.clearTimeout(sharedRecordTimer);
+    setCloudStatus(navigator.onLine ? "syncing" : "offline");
+    sharedRecordTimer = window.setTimeout(() => saveSharedRecord(state.record), 350);
+  }
+
+  async function saveSharedRecord(record) {
+    if (!navigator.onLine) {
+      setCloudStatus("offline");
+      return;
+    }
+    setCloudStatus("syncing");
+    try {
+      const body = await requestSharedRecord("PUT", record);
+      state.record = normalizeSharedRecord(body.record);
+      saveState({ syncRecord: false });
+      setCloudStatus("synced");
+    } catch (error) {
+      setCloudStatus("error");
+    }
   }
 
   function typeGameCount(type) {
@@ -204,7 +298,10 @@
             ? `<section class="record-card panel" aria-label="Bo and Daylene all-time Rummy record">
                 <div class="record-card__label">
                   <p class="eyebrow">Two-player Rummy record</p>
-                <h2>Bo vs. Daylene</h2>
+                  <h2>Bo vs. Daylene</h2>
+                  <p class="record-sync-status record-sync-status--${cloudStatus}" data-cloud-status>
+                    <span aria-hidden="true"></span><span>${cloudStatusLabel()}</span>
+                  </p>
                 </div>
                 <div class="record-score">
                   <strong>${state.record.boWins}</strong>
@@ -644,6 +741,7 @@
     if (winnerName === "daylene") state.record.dayleneWins += 1;
     state.record.boPoints += bo.total;
     state.record.daylenePoints += daylene.total;
+    state.record.updatedAt = Date.now();
     state.record.results.push({
       gameId: game.id,
       roundId,
@@ -675,6 +773,7 @@
       state.record.boPoints -= Number(result.boPoints) || 0;
       state.record.daylenePoints -= Number(result.daylenePoints) || 0;
       state.record.results.splice(recordIndex, 1);
+      state.record.updatedAt = Date.now();
     }
     game.players = lastRound.before.players.map((player) => ({ ...player }));
     game.dealerId = lastRound.before.dealerId;
@@ -867,5 +966,8 @@
 
   render();
   registerWebMcpTools();
+  loadSharedRecord();
+  window.addEventListener("online", loadSharedRecord);
+  window.addEventListener("offline", () => setCloudStatus("offline"));
   if (recordWasCleared) showToast("Bo and Daylene’s record was cleared.");
 })();
