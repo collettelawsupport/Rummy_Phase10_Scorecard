@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="A family scorekeeper for Rummy and Phase 10, with saved games, dealer tracking, and a lasting Bo vs. Daylene record."
+    />
+    <meta name="theme-color" content="#10233f" />
+    <title>Family Scorecard</title>
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+    <link rel="stylesheet" href="./styles.css" />
+    <script src="./app.js" defer></script>
+  </head>
+  <body>
+    <noscript>This scorekeeper needs JavaScript enabled to save and score games.</noscript>
+    <div id="app" class="app-shell" aria-live="polite"></div>
+
+    <dialog id="new-game-dialog" class="dialog dialog--wide">
+      <form id="new-game-form" method="dialog">
+        <div class="dialog__header">
+          <div>
+            <p class="eyebrow">New scorecard</p>
+            <h2 id="new-game-title">Start a game</h2>
+          </div>
+          <button class="icon-button" type="button" data-close-dialog="new-game-dialog" aria-label="Close">×</button>
+        </div>
+
+        <label class="field">
+          <span>Game name <small>optional</small></span>
+          <input id="game-name" name="gameName" autocomplete="off" maxlength="48" placeholder="Friday night" />
+        </label>
+
+        <fieldset class="player-setup">
+          <legend>Players in dealer order</legend>
+          <p class="field-note">List everyone in seating order. The deal moves down this list after every round.</p>
+          <div id="player-inputs"></div>
+          <button id="add-player" class="button button--quiet button--small" type="button">+ Add player</button>
+        </fieldset>
+
+        <label class="field">
+          <span>First dealer</span>
+          <select id="first-dealer" name="firstDealer"></select>
+        </label>
+
+        <p id="setup-error" class="form-error" role="alert"></p>
+        <div class="dialog__actions">
+          <button class="button button--quiet" type="button" data-close-dialog="new-game-dialog">Cancel</button>
+          <button class="button button--primary" type="submit">Start game</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="saved-games-dialog" class="dialog dialog--saved">
+      <div class="dialog__header">
+        <div>
+          <p class="eyebrow">Your scorecards</p>
+          <h2>Saved games</h2>
+        </div>
+        <button class="icon-button" type="button" data-close-dialog="saved-games-dialog" aria-label="Close">×</button>
+      </div>
+      <div id="saved-games-list"></div>
+    </dialog>
+
+    <dialog id="confirm-dialog" class="dialog dialog--confirm">
+      <div class="dialog__header">
+        <div>
+          <p class="eyebrow">Start over</p>
+          <h2>Restart this game?</h2>
+        </div>
+      </div>
+      <p>All rounds and scores on this scorecard will be cleared. Player order will stay the same.</p>
+      <div class="dialog__actions">
+        <button class="button button--quiet" type="button" data-close-dialog="confirm-dialog">Keep playing</button>
+        <button id="confirm-restart" class="button button--danger" type="button">Restart game</button>
+      </div>
+    </dialog>
+
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  </body>
+</html>
