@@ -204,15 +204,15 @@
             ? `<section class="record-card panel" aria-label="Bo and Daylene all-time Rummy record">
                 <div class="record-card__label">
                   <p class="eyebrow">Two-player Rummy record</p>
-                  <h2>Bo vs. Daylene</h2>
+                <h2>Bo vs. Daylene</h2>
                 </div>
                 <div class="record-score">
-                  <strong>${state.record.boWins}–${state.record.dayleneWins}</strong>
-                  <span>Bo W–L<b>${state.record.boPoints} total pts</b></span>
+                  <strong>${state.record.boWins}</strong>
+                  <span>Bo wins<b>${state.record.boPoints} total pts</b></span>
                 </div>
                 <div class="record-score">
-                  <strong>${state.record.dayleneWins}–${state.record.boWins}</strong>
-                  <span>Daylene W–L<b>${state.record.daylenePoints} total pts</b></span>
+                  <strong>${state.record.dayleneWins}</strong>
+                  <span>Daylene wins<b>${state.record.daylenePoints} total pts</b></span>
                 </div>
               </section>`
             : ""
