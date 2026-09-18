@@ -593,7 +593,7 @@ p {
   font-variant-numeric: tabular-nums;
 }
 
-.phase-check {
+.round-check {
   grid-column: 1 / -1;
   display: flex;
   align-items: center;
@@ -605,7 +605,7 @@ p {
   cursor: pointer;
 }
 
-.phase-check input {
+.round-check input {
   width: 22px;
   height: 22px;
   margin: 0;

@@ -170,6 +170,7 @@
 
   function renderGame(game) {
     const dealer = game.players.find((player) => player.id === game.dealerId);
+    const lastWentOut = getLastWentOut(game);
     const isComplete = game.status === "complete";
     const winnerNames = game.winnerIds
       .map((id) => game.players.find((player) => player.id === id)?.name)
@@ -252,8 +253,8 @@
               <span class="stat__value">${escapeHtml(dealer?.name || "—")}</span>
             </div>
             <div class="stat">
-              <span class="stat__label">Goal</span>
-              <span class="stat__value">${TYPES[game.type].shortRule}</span>
+              <span class="stat__label">${game.type === "rummy" ? "Last out" : "Goal"}</span>
+              <span class="stat__value">${game.type === "rummy" ? escapeHtml(lastWentOut?.name || "—") : TYPES[game.type].shortRule}</span>
             </div>
           </div>
           <div class="player-list">
@@ -278,6 +279,7 @@
     const isDealer = player.id === game.dealerId;
     const isTiebreak = game.tieBreakPlayerIds.includes(player.id);
     const isWinner = game.winnerIds.includes(player.id);
+    const wentOutLastRound = getLastWentOut(game)?.id === player.id;
     let subline = `Seat ${index + 1}`;
     if (game.type === "phase10") {
       subline = player.completed ? "Completed Phase 10" : `Playing Phase ${player.phase}`;
@@ -295,6 +297,7 @@
             ${escapeHtml(player.name)}
             ${isWinner ? '<span class="badge">Winner</span>' : ""}
             ${isTiebreak && game.status !== "complete" ? '<span class="badge badge--orange">Tiebreak</span>' : ""}
+            ${wentOutLastRound ? '<span class="badge badge--orange">Went out</span>' : ""}
           </p>
           <p class="player-row__sub">${escapeHtml(subline)}</p>
         </div>
@@ -331,7 +334,7 @@
   function renderScoreEntry(game, player) {
     const isPhase = game.type === "phase10";
     return `
-      <div class="score-entry ${isPhase ? "score-entry--phase" : ""}">
+      <div class="score-entry ${isPhase ? "score-entry--phase" : "score-entry--rummy"}">
         <label for="score-${player.id}">
           <span class="score-entry__name">${escapeHtml(player.name)}</span>
           ${isPhase ? `<span class="score-entry__phase">Currently on Phase ${player.phase}</span>` : ""}
@@ -350,13 +353,22 @@
         />
         ${
           isPhase
-            ? `<label class="phase-check">
+            ? `<label class="round-check phase-check">
                 <input name="phased-${player.id}" type="checkbox" />
                 <span>Yes, ${escapeHtml(player.name)} completed Phase ${player.phase}</span>
               </label>`
-            : ""
+            : `<label class="round-check went-out-check">
+                <input name="went-out-${player.id}" type="checkbox" />
+                <span>${escapeHtml(player.name)} went out this round</span>
+              </label>`
         }
       </div>`;
+  }
+
+  function getLastWentOut(game) {
+    if (game.type !== "rummy" || !game.rounds.length) return null;
+    const winningEntry = game.rounds.at(-1).entries.find((entry) => entry.wentOut);
+    return winningEntry ? game.players.find((player) => player.id === winningEntry.playerId) || null : null;
   }
 
   function renderHistorySummary(game) {
@@ -508,6 +520,17 @@
     const activePlayers = activeScoringPlayers(game);
     const error = document.getElementById("round-error");
     const entries = [];
+    const wentOutIds =
+      game.type === "rummy"
+        ? activePlayers
+            .filter((player) => document.querySelector(`[name="went-out-${player.id}"]`)?.checked)
+            .map((player) => player.id)
+        : [];
+
+    if (game.type === "rummy" && wentOutIds.length !== 1) {
+      error.textContent = "Choose exactly one player who went out this round.";
+      return;
+    }
 
     for (const player of activePlayers) {
       const scoreInput = document.getElementById(`score-${player.id}`);
@@ -522,6 +545,7 @@
         playerId: player.id,
         score,
         phased: game.type === "phase10" ? Boolean(document.querySelector(`[name="phased-${player.id}"]`)?.checked) : false,
+        wentOut: game.type === "rummy" && wentOutIds.includes(player.id),
       });
     }
 
@@ -733,6 +757,7 @@
                     player: { type: "string" },
                     score: { type: "integer" },
                     phased: { type: "boolean" },
+                    wentOut: { type: "boolean" },
                   },
                   required: ["player", "score"],
                   additionalProperties: false,
@@ -760,8 +785,16 @@
                 throw new Error("Every score must be a valid whole number for this game.");
               }
               seen.add(player.id);
-              return { playerId: player.id, score: item.score, phased: game.type === "phase10" && item.phased === true };
+              return {
+                playerId: player.id,
+                score: item.score,
+                phased: game.type === "phase10" && item.phased === true,
+                wentOut: game.type === "rummy" && item.wentOut === true,
+              };
             });
+            if (game.type === "rummy" && entries.filter((entry) => entry.wentOut).length !== 1) {
+              throw new Error("Choose exactly one player who went out this round.");
+            }
             saveRoundEntries(game, entries);
             saveState();
             render();
