@@ -81,7 +81,7 @@ export default async (request) => {
 
     if (request.method === "GET") {
       const stored = await store.get(key, { type: "json", consistency: "strong" });
-      return json({ exists: stored !== null, record: stored ? normalizeRecord(stored) : emptyRecord() });
+      return json({ exists: stored != null, record: stored ? normalizeRecord(stored) : emptyRecord() });
     }
 
     const body = await request.json();
