@@ -253,8 +253,8 @@
               <span class="stat__value">${escapeHtml(dealer?.name || "—")}</span>
             </div>
             <div class="stat">
-              <span class="stat__label">${game.type === "rummy" ? "Last out" : "Goal"}</span>
-              <span class="stat__value">${game.type === "rummy" ? escapeHtml(lastWentOut?.name || "—") : TYPES[game.type].shortRule}</span>
+              <span class="stat__label">Last out</span>
+              <span class="stat__value">${escapeHtml(lastWentOut?.name || "—")}</span>
             </div>
           </div>
           <div class="player-list">
@@ -356,6 +356,10 @@
             ? `<label class="round-check phase-check">
                 <input name="phased-${player.id}" type="checkbox" />
                 <span>Yes, ${escapeHtml(player.name)} completed Phase ${player.phase}</span>
+              </label>
+              <label class="round-check went-out-check">
+                <input name="went-out-${player.id}" type="checkbox" />
+                <span>${escapeHtml(player.name)} went out this round</span>
               </label>`
             : `<label class="round-check went-out-check">
                 <input name="went-out-${player.id}" type="checkbox" />
@@ -366,7 +370,7 @@
   }
 
   function getLastWentOut(game) {
-    if (game.type !== "rummy" || !game.rounds.length) return null;
+    if (!game.rounds.length) return null;
     const winningEntry = game.rounds.at(-1).entries.find((entry) => entry.wentOut);
     return winningEntry ? game.players.find((player) => player.id === winningEntry.playerId) || null : null;
   }
@@ -520,14 +524,11 @@
     const activePlayers = activeScoringPlayers(game);
     const error = document.getElementById("round-error");
     const entries = [];
-    const wentOutIds =
-      game.type === "rummy"
-        ? activePlayers
-            .filter((player) => document.querySelector(`[name="went-out-${player.id}"]`)?.checked)
-            .map((player) => player.id)
-        : [];
+    const wentOutIds = activePlayers
+      .filter((player) => document.querySelector(`[name="went-out-${player.id}"]`)?.checked)
+      .map((player) => player.id);
 
-    if (game.type === "rummy" && wentOutIds.length !== 1) {
+    if (wentOutIds.length !== 1) {
       error.textContent = "Choose exactly one player who went out this round.";
       return;
     }
@@ -545,7 +546,7 @@
         playerId: player.id,
         score,
         phased: game.type === "phase10" ? Boolean(document.querySelector(`[name="phased-${player.id}"]`)?.checked) : false,
-        wentOut: game.type === "rummy" && wentOutIds.includes(player.id),
+        wentOut: wentOutIds.includes(player.id),
       });
     }
 
@@ -789,10 +790,10 @@
                 playerId: player.id,
                 score: item.score,
                 phased: game.type === "phase10" && item.phased === true,
-                wentOut: game.type === "rummy" && item.wentOut === true,
+                wentOut: item.wentOut === true,
               };
             });
-            if (game.type === "rummy" && entries.filter((entry) => entry.wentOut).length !== 1) {
+            if (entries.filter((entry) => entry.wentOut).length !== 1) {
               throw new Error("Choose exactly one player who went out this round.");
             }
             saveRoundEntries(game, entries);
