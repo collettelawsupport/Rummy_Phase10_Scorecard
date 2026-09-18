@@ -244,22 +244,45 @@
   function renderEmpty(type) {
     const isRummy = type === "rummy";
     return `
-      <section class="empty-state">
-        <div class="empty-state__copy">
-          <p class="eyebrow">${TYPES[type].label}</p>
-          <h1>${isRummy ? "Deal. Score. Reach 500." : "Ten phases. One scorecard."}</h1>
-          <p>${
-            isRummy
-              ? "Add or subtract every round. If the leaders tie at 500 or more, the scorecard keeps only those players in a winner-take-all finish."
-              : "Track every player’s score and phase. At the end of each round, mark who completed their phase and the dealer moves automatically."
-          }</p>
-          <button class="button button--primary" type="button" data-action="new-game">Start ${TYPES[type].label}</button>
-        </div>
-        <div class="empty-state__score" aria-hidden="true">
-          <div class="score-art__number">${isRummy ? "500" : "10"}</div>
-          <div class="score-art__label">${isRummy ? "points to win" : "phases to finish"}</div>
-        </div>
-      </section>`;
+      <div class="empty-with-record">
+        ${isRummy ? renderRummyRecord() : ""}
+        <section class="empty-state">
+          <div class="empty-state__copy">
+            <p class="eyebrow">${TYPES[type].label}</p>
+            <h1>${isRummy ? "Deal. Score. Reach 500." : "Ten phases. One scorecard."}</h1>
+            <p>${
+              isRummy
+                ? "Add or subtract every round. If the leaders tie at 500 or more, the scorecard keeps only those players in a winner-take-all finish."
+                : "Track every player’s score and phase. At the end of each round, mark who completed their phase and the dealer moves automatically."
+            }</p>
+            <button class="button button--primary" type="button" data-action="new-game">Start ${TYPES[type].label}</button>
+          </div>
+          <div class="empty-state__score" aria-hidden="true">
+            <div class="score-art__number">${isRummy ? "500" : "10"}</div>
+            <div class="score-art__label">${isRummy ? "points to win" : "phases to finish"}</div>
+          </div>
+        </section>
+      </div>`;
+  }
+
+  function renderRummyRecord() {
+    return `<section class="record-card panel" aria-label="Bo and Daylene shared Rummy record">
+      <div class="record-card__label">
+        <p class="eyebrow">Two-player Rummy record</p>
+        <h2>Bo vs. Daylene</h2>
+        <p class="record-sync-status record-sync-status--${cloudStatus}" data-cloud-status>
+          <span aria-hidden="true"></span><span>${cloudStatusLabel()}</span>
+        </p>
+      </div>
+      <div class="record-score">
+        <strong>${state.record.boWins}</strong>
+        <span>Bo wins<b>${state.record.boPoints} total pts</b></span>
+      </div>
+      <div class="record-score">
+        <strong>${state.record.dayleneWins}</strong>
+        <span>Daylene wins<b>${state.record.daylenePoints} total pts</b></span>
+      </div>
+    </section>`;
   }
 
   function renderGame(game) {
@@ -295,23 +318,7 @@
 
         ${
           game.type === "rummy"
-            ? `<section class="record-card panel" aria-label="Bo and Daylene all-time Rummy record">
-                <div class="record-card__label">
-                  <p class="eyebrow">Two-player Rummy record</p>
-                  <h2>Bo vs. Daylene</h2>
-                  <p class="record-sync-status record-sync-status--${cloudStatus}" data-cloud-status>
-                    <span aria-hidden="true"></span><span>${cloudStatusLabel()}</span>
-                  </p>
-                </div>
-                <div class="record-score">
-                  <strong>${state.record.boWins}</strong>
-                  <span>Bo wins<b>${state.record.boPoints} total pts</b></span>
-                </div>
-                <div class="record-score">
-                  <strong>${state.record.dayleneWins}</strong>
-                  <span>Daylene wins<b>${state.record.daylenePoints} total pts</b></span>
-                </div>
-              </section>`
+            ? renderRummyRecord()
             : ""
         }
 
