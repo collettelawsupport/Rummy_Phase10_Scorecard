@@ -2,6 +2,7 @@
   "use strict";
 
   const STORAGE_KEY = "family-scorecard-v1";
+  const RECORD_RESET_KEY = "bo-daylene-record-reset-2026-09-17";
   const TYPES = {
     rummy: { label: "Rummy", shortRule: "First to 500" },
     phase10: { label: "Phase 10", shortRule: "Complete all 10 phases" },
@@ -18,6 +19,7 @@
 
   let setupType = "rummy";
   let toastTimer;
+  let recordWasCleared = false;
   let state = loadState();
 
   function emptyState() {
@@ -26,22 +28,32 @@
       games: [],
       activeTab: "rummy",
       activeGameIdByType: { rummy: null, phase10: null },
-      record: { boWins: 0, dayleneWins: 0, results: [] },
+      record: { boWins: 0, dayleneWins: 0, boPoints: 0, daylenePoints: 0, results: [] },
+      maintenanceFlags: [],
     };
   }
 
   function loadState() {
     try {
       const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY));
-      if (!parsed || parsed.version !== 1 || !Array.isArray(parsed.games)) return emptyState();
-      return {
+      if (!parsed || parsed.version !== 1 || !Array.isArray(parsed.games)) {
+        return { ...emptyState(), maintenanceFlags: [RECORD_RESET_KEY] };
+      }
+      const loaded = {
         ...emptyState(),
         ...parsed,
         activeGameIdByType: { ...emptyState().activeGameIdByType, ...parsed.activeGameIdByType },
         record: { ...emptyState().record, ...parsed.record },
       };
+      if (!loaded.maintenanceFlags?.includes(RECORD_RESET_KEY)) {
+        loaded.record = { boWins: 0, dayleneWins: 0, boPoints: 0, daylenePoints: 0, results: [] };
+        loaded.maintenanceFlags = [...(loaded.maintenanceFlags || []), RECORD_RESET_KEY];
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(loaded));
+        recordWasCleared = true;
+      }
+      return loaded;
     } catch (error) {
-      return emptyState();
+      return { ...emptyState(), maintenanceFlags: [RECORD_RESET_KEY] };
     }
   }
 
@@ -193,8 +205,14 @@
                   <p class="eyebrow">Two-player Rummy record</p>
                   <h2>Bo vs. Daylene</h2>
                 </div>
-                <div class="record-score"><strong>${state.record.boWins}–${state.record.dayleneWins}</strong><span>Bo W–L</span></div>
-                <div class="record-score"><strong>${state.record.dayleneWins}–${state.record.boWins}</strong><span>Daylene W–L</span></div>
+                <div class="record-score">
+                  <strong>${state.record.boWins}–${state.record.dayleneWins}</strong>
+                  <span>Bo W–L<b>${state.record.boPoints} total pts</b></span>
+                </div>
+                <div class="record-score">
+                  <strong>${state.record.dayleneWins}–${state.record.boWins}</strong>
+                  <span>Daylene W–L<b>${state.record.daylenePoints} total pts</b></span>
+                </div>
               </section>`
             : ""
         }
@@ -594,10 +612,21 @@
     const names = game.players.map((player) => normalizeName(player.name)).sort();
     if (names[0] !== "bo" || names[1] !== "daylene") return;
     const winner = game.players.find((player) => player.id === game.winnerIds[0]);
+    const bo = game.players.find((player) => normalizeName(player.name) === "bo");
+    const daylene = game.players.find((player) => normalizeName(player.name) === "daylene");
     const winnerName = normalizeName(winner.name);
     if (winnerName === "bo") state.record.boWins += 1;
     if (winnerName === "daylene") state.record.dayleneWins += 1;
-    state.record.results.push({ gameId: game.id, roundId, winner: winnerName, timestamp: Date.now() });
+    state.record.boPoints += bo.total;
+    state.record.daylenePoints += daylene.total;
+    state.record.results.push({
+      gameId: game.id,
+      roundId,
+      winner: winnerName,
+      boPoints: bo.total,
+      daylenePoints: daylene.total,
+      timestamp: Date.now(),
+    });
   }
 
   function nextDealer(game, currentDealerId, eligibleIds) {
@@ -618,6 +647,8 @@
       const result = state.record.results[recordIndex];
       if (result.winner === "bo") state.record.boWins = Math.max(0, state.record.boWins - 1);
       if (result.winner === "daylene") state.record.dayleneWins = Math.max(0, state.record.dayleneWins - 1);
+      state.record.boPoints -= Number(result.boPoints) || 0;
+      state.record.daylenePoints -= Number(result.daylenePoints) || 0;
       state.record.results.splice(recordIndex, 1);
     }
     game.players = lastRound.before.players.map((player) => ({ ...player }));
@@ -802,4 +833,5 @@
 
   render();
   registerWebMcpTools();
+  if (recordWasCleared) showToast("Bo and Daylene’s record was cleared.");
 })();

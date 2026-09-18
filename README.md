@@ -1,6 +1,6 @@
 # Family Scorecard
 
-A device-local scorekeeper for Rummy and Phase 10. It supports two to six players, saved games, automatic dealer rotation, Rummy tiebreaks, Phase 10 phase tracking, round undo, and a persistent Bo vs. Daylene Rummy record.
+A device-local scorekeeper for Rummy and Phase 10. It supports two to six players, saved games, automatic dealer rotation, Rummy tiebreaks, Phase 10 phase tracking, round undo, and a persistent Bo vs. Daylene Rummy record with wins, losses, and cumulative points.
 
 ## Run locally
 

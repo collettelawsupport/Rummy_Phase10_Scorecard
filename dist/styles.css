@@ -696,6 +696,14 @@ p {
   color: #aec1d2;
   font-size: 0.82rem;
   font-weight: 750;
+  line-height: 1.35;
+}
+
+.record-score span b {
+  display: block;
+  margin-top: 2px;
+  color: white;
+  font-size: 0.77rem;
 }
 
 .tiebreak-callout {
